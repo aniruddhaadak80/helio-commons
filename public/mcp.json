@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "helio-commons": {
+      "type": "http",
+      "url": "https://helio-commons.vercel.app/api/mcp"
+    }
+  }
+}
