@@ -157,29 +157,38 @@ The same `calculateForecast` function serves the board, `/api/forecast`, and the
 ## 🤖 Agent interface
 
 ```mermaid
-sequenceDiagram
-  participant C as Coding agent
-  participant M as MCP console
-  participant J as JSON-RPC route
-  participant D as Domain + Neon
-  C->>M: initialize
-  M->>J: tools/list
-  J-->>C: six tool definitions
-  C->>M: tools/call create_mission
-  M->>J: JSON-RPC arguments
-  J->>D: validate + persist + seal
-  D-->>J: mission + forecast
-  J-->>C: content + structuredContent
-  C->>M: tools/call verify_audit
-  M->>J: missionId
-  J->>D: replay SHA-384 chain
-  D-->>C: valid + checked count
+flowchart LR
+  subgraph Client["Agent client"]
+    C["Coding agent"]
+    M["MCP console"]
+  end
+
+  subgraph Service["Public Helio service"]
+    J["JSON-RPC route"]
+    D["Shared domain functions"]
+    N[("Neon Postgres")]
+  end
+
+  C -- "initialize / tools/list" --> M
+  M -- "JSON-RPC request" --> J
+  J -- "validate arguments" --> D
+  D -- "persist + SHA-384 seal" --> N
+  N -- "mission + forecast" --> D
+  D -- "structuredContent" --> J
+  J -- "tool result" --> C
+  C -- "tools/call create_mission" --> M
+  C -- "tools/call verify_audit" --> M
+  M -- "replay chain" --> D
+  D -- "valid + checked count" --> C
 
   classDef agent fill:#34d399,color:#04060c,stroke:#34d399
   classDef engine fill:#a78bfa,color:#04060c,stroke:#a78bfa
   classDef infra fill:#94a3b8,color:#04060c,stroke:#94a3b8
+  classDef live fill:#22d3ee,color:#04060c,stroke:#22d3ee
   class C,M agent
   class J,D engine
+  class N infra
+  style Service fill:#22d3ee,color:#04060c,stroke:#22d3ee
 ```
 
 Available tools:
