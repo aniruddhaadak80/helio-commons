@@ -363,20 +363,39 @@ export async function listAudit(missionId?: string): Promise<AuditEvent[]> {
 }
 
 export async function verifyAudit(missionId?: string): Promise<AuditVerification> {
-  const events = await listAudit(missionId);
-  let previousSeal = missionId ? events[0]?.prevSeal ?? GENESIS_SEAL : GENESIS_SEAL;
-  for (const event of events) {
-    if (event.prevSeal !== previousSeal) {
-      return { valid: false, checked: events.indexOf(event), brokenAt: event.id, lastSeal: previousSeal };
-    }
+  // The audit chain is global: every event links to the seal of the event
+  // before it, across missions. Replaying only one mission's events would
+  // compare each event against the wrong predecessor as soon as another
+  // mission is written in between, so the whole chain is replayed and the
+  // result is then reported for the requested mission.
+  const chain = await listAudit();
+  const scope = missionId ? chain.filter((event) => event.missionId === missionId) : chain;
+  let previousSeal = GENESIS_SEAL;
+  let brokenIndex = -1;
+  let brokenEventId: string | undefined;
+  for (let index = 0; index < chain.length; index += 1) {
+    const event = chain[index];
     const fullEvent = eventData(event.action, event.missionId, event.payload, event.prevSeal, event.at);
-    const expected = sealValue(event.prevSeal, fullEvent);
-    if (expected !== event.seal) {
-      return { valid: false, checked: events.indexOf(event), brokenAt: event.id, lastSeal: previousSeal };
+    if (event.prevSeal !== previousSeal || sealValue(event.prevSeal, fullEvent) !== event.seal) {
+      brokenIndex = index;
+      brokenEventId = event.id;
+      break;
     }
     previousSeal = event.seal;
   }
-  return { valid: true, checked: events.length, lastSeal: previousSeal };
+  if (brokenIndex === -1) {
+    return { valid: true, checked: scope.length, lastSeal: previousSeal };
+  }
+  // A mission-scoped request only fails when the break touches that mission:
+  // either the broken event is one of its own, or one of its events comes
+  // after the break and can no longer be trusted.
+  const scopeIndexes = scope.map((event) => chain.indexOf(event));
+  const scopeAffected = scopeIndexes.some((index) => index >= brokenIndex);
+  if (missionId && !scopeAffected) {
+    return { valid: true, checked: scope.length, lastSeal: previousSeal };
+  }
+  const checked = scopeIndexes.filter((index) => index < brokenIndex).length;
+  return { valid: false, checked, brokenAt: brokenEventId, lastSeal: previousSeal };
 }
 
 export function storageMode(): "neon" | "memory" {
