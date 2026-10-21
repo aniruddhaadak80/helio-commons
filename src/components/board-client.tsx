@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowUpRight, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { CATEGORY_LABELS, STAGE_LABELS } from "@/lib/fallback";
+import { shortSeal } from "@/lib/canonical";
 import type { Mission, MissionCategory, MissionStage } from "@/lib/types";
 
 const initialForm = {
@@ -25,10 +26,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(body.error || "request failed");
   }
   return body;
-}
-
-function shortSeal(seal: string) {
-  return `${seal.slice(0, 10)}…${seal.slice(-6)}`;
 }
 
 function MissionCard({ mission, onDelete }: { mission: Mission; onDelete: (id: string) => void }) {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Check, Download, FileCheck2, Play, Plus, Save, Trash2 } from "lucide-react";
+import { shortSeal } from "@/lib/canonical";
 import type { AuditEvent, Evidence, Mission } from "@/lib/types";
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -13,10 +14,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(body.error || "request failed");
   }
   return body;
-}
-
-function shortSeal(seal: string) {
-  return `${seal.slice(0, 12)}…${seal.slice(-8)}`;
 }
 
 export function MissionDetailClient({ missionId }: { missionId: string }) {
